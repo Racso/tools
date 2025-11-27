@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width">
     <title>MD Viewer</title>
     <link rel="stylesheet" href="lib/github.min.css">
     <script src="lib/highlight.min.js"></script>
@@ -16,9 +16,9 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            height: 100vh;
             display: flex;
             flex-direction: column;
+            padding: 30px;
         }
 
         .toolbar {
@@ -59,88 +59,50 @@
         }
 
         .container {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
+            display: block;
         }
 
-        /* Side by side (default) */
-        .container.side-by-side {
-            flex-direction: row;
+        .editor {
+            display: block;
+            border-bottom: 1px solid #ddd;
+            padding: 12px;
         }
 
-        .container.side-by-side .editor,
-        .container.side-by-side .preview {
-            width: 50%;
-            height: 100%;
-        }
-
-        /* Top/Down */
-        .container.top-down {
-            flex-direction: column;
-        }
-
-        .container.top-down .editor,
-        .container.top-down .preview {
+        .editor textarea {
             width: 100%;
-            height: 50%;
+            min-height: 400px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            border-radius: 4px;
         }
 
-        /* Only MD input */
-        .container.only-md .editor {
+        .preview {
+            display: block;
+            padding: 15px;
+            background: white;
             width: 100%;
-            height: 100%;
         }
 
         .container.only-md .preview {
             display: none;
         }
 
-        /* Only formatted text */
         .container.only-preview .editor {
             display: none;
         }
 
         .container.only-preview .preview {
-            width: 100%;
-            height: 100%;
-        }
-
-        .editor {
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #ddd;
-        }
-
-        .container.top-down .editor {
-            border-right: none;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .editor textarea {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            resize: none;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            outline: none;
-        }
-
-        .preview {
-            overflow: auto;
-            padding: 15px;
-            background: white;
+            display: block;
         }
 
         .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
             margin-top: 1em;
             margin-bottom: 0.5em;
-        }
-
-        .preview h1:first-child, .preview h2:first-child, .preview h3:first-child {
-            margin-top: 0;
         }
 
         .preview p {
@@ -161,7 +123,6 @@
             background: #f4f4f4;
             padding: 2px 5px;
             border-radius: 3px;
-            font-family: 'Consolas', 'Monaco', monospace;
         }
 
         .preview pre {
@@ -170,18 +131,6 @@
             border-radius: 5px;
             overflow-x: auto;
             margin-bottom: 1em;
-        }
-
-        .preview pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .preview blockquote {
-            border-left: 4px solid #ddd;
-            padding-left: 15px;
-            margin: 1em 0;
-            color: #666;
         }
 
         .preview table {
@@ -214,187 +163,159 @@
             margin: 1.5em 0;
         }
 
-        /* Syntax highlighting styles for code blocks */
-        .preview pre code.hljs {
-            display: block;
-            overflow-x: auto;
-            padding: 1em;
-        }
-
-        /* Print styles - hide everything except preview in only-preview mode */
         @media print {
             .toolbar {
                 display: none !important;
             }
 
-            .container.only-preview .editor {
+            .editor {
                 display: none !important;
             }
 
-            .container.only-preview .preview {
-                width: 100% !important;
-                height: auto !important;
-                overflow: visible !important;
-                padding: 0 !important;
-            }
-
-            body.print-mode .toolbar {
-                display: none !important;
-            }
-
-            body.print-mode .container {
-                display: block !important;
-            }
-
-            body.print-mode .editor {
-                display: none !important;
-            }
-
-            body.print-mode .preview {
+            .preview {
                 display: block !important;
                 width: 100% !important;
-                height: auto !important;
                 overflow: visible !important;
                 padding: 0 !important;
             }
         }
 
-        /* Full page mode - hide toolbar */
         body.fullpage-mode .toolbar {
             display: none;
-        }
-
-        body.fullpage-mode .container {
-            height: 100vh;
         }
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <h1>MD Viewer</h1>
-        <button class="mode-btn" id="modeBtn" title="Switch view mode">
-            Side by Side <span class="shortcut">Ctrl+M</span>
-        </button>
-    </div>
-    <div class="container side-by-side" id="container">
-        <div class="editor">
-            <textarea id="mdInput" placeholder="Enter your Markdown here..."></textarea>
-        </div>
-        <div class="preview" id="preview"></div>
-    </div>
+<div class="toolbar">
+    <h1>MD Viewer</h1>
+    <button class="mode-btn" id="modeBtn" title="Switch view mode">Markdown <span class="shortcut">Ctrl+M</span></button>
+</div>
 
-    <script>
-        // Create a dynamic style element for paged media CSS
-        var cssPagedMedia = (function() {
-            var style = document.createElement('style');
-            document.head.appendChild(style);
-            return function(css) {
-                style.innerHTML = css;
-            };
-        })();
+<div class="container only-md" id="container">
+    <div class="editor">
+        <textarea id="mdInput" placeholder="Enter your Markdown here..."></textarea>
+    </div>
+    <div class="preview" id="preview"></div>
+</div>
 
-        // Add a convenience method to set the @page size
-        cssPagedMedia.size = function(sizeString) {
-            cssPagedMedia('@page { margin: 0; size: ' + sizeString + ' };');
+<script>
+    var cssPagedMedia = (function () {
+        var style = document.createElement('style');
+        document.head.appendChild(style);
+        return function (css) {
+            style.innerHTML = css;
         };
+    })();
 
-        // Initialize markdown-it with highlight.js for code highlighting
-        const md = window.markdownit({
-            html: false,        // Disable HTML tags in source for security
-            linkify: true,      // Autoconvert URL-like text to links
-            typographer: true,  // Enable smart quotes and other typographic replacements
-            highlight: function (str, lang) {
-                if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
-                    try {
-                        return hljs.highlight(str, { language: lang }).value;
-                    } catch (__) {}
+    cssPagedMedia.size = function (sizeString) {
+        var rule = '@page { margin: 0; size: ' + sizeString + ' }\n@media print { @page { margin: 0; size: ' + sizeString + ' } }';
+        cssPagedMedia(rule);
+    };
+
+    function debounce(fn, wait) {
+        var timer = null;
+        return function () {
+            var args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn.apply(null, args);
+            }, wait);
+        };
+    }
+
+    window.addEventListener('resize', debounce(function () {
+        updatePagedMediaSize();
+    }, 200));
+
+    const md = window.markdownit({
+        html: false,
+        linkify: true,
+        typographer: true,
+        highlight: function (str, lang) {
+            if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(str, {language: lang}).value;
+                } catch (__) {
                 }
-                return ''; // Use external default escaping
             }
-        });
+            return '';
+        }
+    });
 
-        const mdInput = document.getElementById('mdInput');
-        const preview = document.getElementById('preview');
-        const container = document.getElementById('container');
-        const modeBtn = document.getElementById('modeBtn');
+    const mdInput = document.getElementById('mdInput');
+    const preview = document.getElementById('preview');
+    const container = document.getElementById('container');
+    const modeBtn = document.getElementById('modeBtn');
 
-                // Reusable paged-media size updater. Call after rendering preview or on-demand.
-                function updatePagedMediaSize() {
-                    if (!container) return;
-                    // Get width and height in pixels, then convert to inches (1in = 96px)
-                    var rect = container.getBoundingClientRect();
-                    var widthInInches = rect.width / 96;
+    function updatePagedMediaSize() {
+        if (!container) return;
+        var rect = container.getBoundingClientRect();
+        var widthInInches = rect.width / 96;
+        var docHeight = Math.max(
+            document.body.scrollHeight, document.documentElement.scrollHeight,
+            document.body.offsetHeight, document.documentElement.offsetHeight,
+            document.body.clientHeight, document.documentElement.clientHeight
+        ) + 10;
+        var heightInInches = docHeight / 96;
+        cssPagedMedia.size(widthInInches + 'in ' + heightInInches + 'in');
+    }
 
-                    // To replicate $(document).height()+10: Get document height (with a 10px buffer)
-                    var docHeight = Math.max(
-                        document.body.scrollHeight, document.documentElement.scrollHeight,
-                        document.body.offsetHeight, document.documentElement.offsetHeight,
-                        document.body.clientHeight, document.documentElement.clientHeight
-                    ) + 10;
-                    var heightInInches = docHeight / 96;
+    function updatePreview() {
+        const markdownText = mdInput.value;
+        preview.innerHTML = md.render(markdownText);
 
-                    cssPagedMedia.size(widthInInches + 'in ' + heightInInches + 'in');
-                }
-
-        const modes = ['side-by-side', 'top-down', 'only-md', 'only-preview'];
-        const modeLabels = {
-            'side-by-side': 'Side by Side',
-            'top-down': 'Top / Down',
-            'only-md': 'Only MD',
-            'only-preview': 'Only Preview'
-        };
-        let currentModeIndex = 0;
-
-        // Update preview when input changes
-        function updatePreview() {
-            const markdownText = mdInput.value;
-            preview.innerHTML = md.render(markdownText);
-            // Recalculate paged-media size so printing/export matches current content
+        const imgs = preview.querySelectorAll('img');
+        if (!imgs || imgs.length === 0) {
             updatePagedMediaSize();
+            return;
         }
 
-        mdInput.addEventListener('input', updatePreview);
-
-        // Switch mode
-        function switchMode() {
-            currentModeIndex = (currentModeIndex + 1) % modes.length;
-            const newMode = modes[currentModeIndex];
-            
-            // Remove all mode classes
-            container.classList.remove(...modes);
-            // Add new mode class
-            container.classList.add(newMode);
-            
-            // Update button text
-            modeBtn.innerHTML = `${modeLabels[newMode]} <span class="shortcut">Ctrl+M</span>`;
-            
-            // Toggle fullpage mode for only-preview
-            if (newMode === 'only-preview') {
-                document.body.classList.add('fullpage-mode');
+        let pending = imgs.length;
+        imgs.forEach(function (img) {
+            if (img.complete) {
+                pending -= 1;
             } else {
-                document.body.classList.remove('fullpage-mode');
-            }
-        }
-
-        modeBtn.addEventListener('click', switchMode);
-
-        // Keyboard shortcut
-        document.addEventListener('keydown', function(e) {
-            // Ctrl+M or Cmd+M to switch modes
-            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-                e.preventDefault();
-                switchMode();
-            }
-            
-            // Escape to exit fullpage mode
-            if (e.key === 'Escape' && document.body.classList.contains('fullpage-mode')) {
-                e.preventDefault();
-                switchMode();
+                img.addEventListener('load', function () {
+                    pending -= 1;
+                    if (pending === 0) updatePagedMediaSize();
+                });
+                img.addEventListener('error', function () {
+                    pending -= 1;
+                    if (pending === 0) updatePagedMediaSize();
+                });
             }
         });
 
-        // Initial sample content
-        mdInput.value = `# Welcome to MD Viewer
+        if (pending === 0) updatePagedMediaSize();
+    }
+
+    mdInput.addEventListener('input', updatePreview);
+
+    function switchMode() {
+        if (container.classList.contains('only-md')) {
+            container.classList.remove('only-md');
+            container.classList.add('only-preview');
+            modeBtn.innerHTML = 'Preview <span class="shortcut">Ctrl+M</span>';
+            document.body.classList.add('fullpage-mode');
+            updatePreview();
+        } else {
+            container.classList.remove('only-preview');
+            container.classList.add('only-md');
+            modeBtn.innerHTML = 'Markdown <span class="shortcut">Ctrl+M</span>';
+            document.body.classList.remove('fullpage-mode');
+        }
+    }
+
+    modeBtn.addEventListener('click', switchMode);
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+            e.preventDefault();
+            switchMode();
+        }
+    });
+
+    mdInput.value = `# Welcome to MD Viewer
 
 This is a simple Markdown viewer that helps you convert Markdown to PDF.
 
@@ -422,23 +343,9 @@ function greet(name) {
 greet('World');
 \`\`\`
 
-## View Modes
-
-| Mode | Description |
-|------|-------------|
-| Side by Side | Editor and preview side by side |
-| Top / Down | Editor on top, preview below |
-| Only MD | Just the Markdown editor |
-| Only Preview | Just the formatted output (for printing) |
-
-> **Tip**: Press \`Escape\` in "Only Preview" mode to quickly switch to the next mode.
-
----
-
 *Start typing to see your Markdown rendered!*`;
 
-        // Initial render
-        updatePreview();
-    </script>
+    updatePreview();
+</script>
 </body>
 </html>
