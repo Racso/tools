@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MD Viewer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>
+    <link rel="stylesheet" href="lib/github.min.css">
+    <script src="lib/highlight.min.js"></script>
+    <script src="lib/markdown-it.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -290,7 +290,7 @@
             linkify: true,      // Autoconvert URL-like text to links
             typographer: true,  // Enable smart quotes and other typographic replacements
             highlight: function (str, lang) {
-                if (lang && hljs.getLanguage(lang)) {
+                if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
                     try {
                         return hljs.highlight(str, { language: lang }).value;
                     } catch (__) {}
