@@ -276,21 +276,60 @@
     <script>
         // Simple Markdown parser
         const simpleMarkdown = {
+            // Sanitize URL to prevent javascript: and other dangerous schemes
+            sanitizeUrl: function(url) {
+                if (!url) return '';
+                const trimmedUrl = url.trim().toLowerCase();
+                // Allow only safe protocols
+                if (trimmedUrl.startsWith('javascript:') || 
+                    trimmedUrl.startsWith('vbscript:') || 
+                    trimmedUrl.startsWith('data:') ||
+                    trimmedUrl.startsWith('file:')) {
+                    return '';
+                }
+                return url;
+            },
+            
+            // Escape HTML special characters
+            escapeHtml: function(text) {
+                return text.replace(/&/g, '&amp;')
+                           .replace(/</g, '&lt;')
+                           .replace(/>/g, '&gt;')
+                           .replace(/"/g, '&quot;')
+                           .replace(/'/g, '&#39;');
+            },
+            
             parse: function(text) {
                 if (!text) return '';
                 
                 let html = text;
                 
-                // Escape HTML
-                html = html.replace(/&/g, '&amp;')
-                           .replace(/</g, '&lt;')
-                           .replace(/>/g, '&gt;');
+                // Extract code blocks first to protect them from other processing
+                const codeBlocks = [];
+                html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+                    const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+                    codeBlocks.push(this.escapeHtml(code));
+                    return placeholder;
+                });
                 
-                // Code blocks (must be before other processing)
-                html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+                // Extract inline code
+                const inlineCodes = [];
+                html = html.replace(/`([^`]+)`/g, (match, code) => {
+                    const placeholder = `__INLINE_CODE_${inlineCodes.length}__`;
+                    inlineCodes.push(this.escapeHtml(code));
+                    return placeholder;
+                });
                 
-                // Inline code
-                html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+                // Now escape remaining HTML
+                html = this.escapeHtml(html);
+                
+                // Restore code blocks and inline code with proper HTML tags
+                codeBlocks.forEach((code, i) => {
+                    html = html.replace(`__CODE_BLOCK_${i}__`, `<pre><code>${code}</code></pre>`);
+                });
+                inlineCodes.forEach((code, i) => {
+                    html = html.replace(`__INLINE_CODE_${i}__`, `<code>${code}</code>`);
+                });
                 
                 // Headers
                 html = html.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>');
@@ -316,15 +355,23 @@
                 html = html.replace(/^\*\*\*+$/gm, '<hr>');
                 
                 // Blockquotes
-                html = html.replace(/^>\s+(.*)$/gm, '<blockquote>$1</blockquote>');
+                html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote>$1</blockquote>');
                 // Merge consecutive blockquotes
                 html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
                 
-                // Links
-                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+                // Links - with URL sanitization
+                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                    const sanitizedUrl = this.sanitizeUrl(url);
+                    if (!sanitizedUrl) return text; // Just show text if URL is unsafe
+                    return `<a href="${sanitizedUrl}">${text}</a>`;
+                });
                 
-                // Images
-                html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+                // Images - with URL sanitization
+                html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+                    const sanitizedUrl = this.sanitizeUrl(url);
+                    if (!sanitizedUrl) return alt || ''; // Just show alt text if URL is unsafe
+                    return `<img src="${sanitizedUrl}" alt="${alt}">`;
+                });
                 
                 // Tables
                 html = this.parseTables(html);
