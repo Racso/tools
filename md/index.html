@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MD Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -211,6 +214,13 @@
             margin: 1.5em 0;
         }
 
+        /* Syntax highlighting styles for code blocks */
+        .preview pre code.hljs {
+            display: block;
+            overflow-x: auto;
+            padding: 1em;
+        }
+
         /* Print styles - hide everything except preview in only-preview mode */
         @media print {
             .toolbar {
@@ -274,232 +284,20 @@
     </div>
 
     <script>
-        // Simple Markdown parser
-        const simpleMarkdown = {
-            // Sanitize URL to prevent javascript: and other dangerous schemes
-            sanitizeUrl: function(url) {
-                if (!url) return '';
-                const trimmedUrl = url.trim().toLowerCase();
-                // Allow only safe protocols
-                if (trimmedUrl.startsWith('javascript:') || 
-                    trimmedUrl.startsWith('vbscript:') || 
-                    trimmedUrl.startsWith('data:') ||
-                    trimmedUrl.startsWith('file:')) {
-                    return '';
+        // Initialize markdown-it with highlight.js for code highlighting
+        const md = window.markdownit({
+            html: false,        // Disable HTML tags in source for security
+            linkify: true,      // Autoconvert URL-like text to links
+            typographer: true,  // Enable smart quotes and other typographic replacements
+            highlight: function (str, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(str, { language: lang }).value;
+                    } catch (__) {}
                 }
-                return url;
-            },
-            
-            // Escape HTML special characters
-            escapeHtml: function(text) {
-                return text.replace(/&/g, '&amp;')
-                           .replace(/</g, '&lt;')
-                           .replace(/>/g, '&gt;')
-                           .replace(/"/g, '&quot;')
-                           .replace(/'/g, '&#39;');
-            },
-            
-            parse: function(text) {
-                if (!text) return '';
-                
-                let html = text;
-                
-                // Extract code blocks first to protect them from other processing
-                const codeBlocks = [];
-                html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
-                    const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-                    codeBlocks.push(this.escapeHtml(code));
-                    return placeholder;
-                });
-                
-                // Extract inline code
-                const inlineCodes = [];
-                html = html.replace(/`([^`]+)`/g, (match, code) => {
-                    const placeholder = `__INLINE_CODE_${inlineCodes.length}__`;
-                    inlineCodes.push(this.escapeHtml(code));
-                    return placeholder;
-                });
-                
-                // Now escape remaining HTML
-                html = this.escapeHtml(html);
-                
-                // Restore code blocks and inline code with proper HTML tags
-                codeBlocks.forEach((code, i) => {
-                    html = html.replace(`__CODE_BLOCK_${i}__`, `<pre><code>${code}</code></pre>`);
-                });
-                inlineCodes.forEach((code, i) => {
-                    html = html.replace(`__INLINE_CODE_${i}__`, `<code>${code}</code>`);
-                });
-                
-                // Headers
-                html = html.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>');
-                html = html.replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>');
-                html = html.replace(/^####\s+(.*)$/gm, '<h4>$1</h4>');
-                html = html.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
-                html = html.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
-                html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
-                
-                // Bold and italic
-                html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-                html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-                html = html.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
-                html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-                html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-                
-                // Strikethrough
-                html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-                
-                // Horizontal rule
-                html = html.replace(/^---+$/gm, '<hr>');
-                html = html.replace(/^\*\*\*+$/gm, '<hr>');
-                
-                // Blockquotes
-                html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote>$1</blockquote>');
-                // Merge consecutive blockquotes
-                html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
-                
-                // Links - with URL sanitization
-                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-                    const sanitizedUrl = this.sanitizeUrl(url);
-                    if (!sanitizedUrl) return text; // Just show text if URL is unsafe
-                    return `<a href="${sanitizedUrl}">${text}</a>`;
-                });
-                
-                // Images - with URL sanitization
-                html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-                    const sanitizedUrl = this.sanitizeUrl(url);
-                    if (!sanitizedUrl) return alt || ''; // Just show alt text if URL is unsafe
-                    return `<img src="${sanitizedUrl}" alt="${alt}">`;
-                });
-                
-                // Tables
-                html = this.parseTables(html);
-                
-                // Lists
-                html = this.parseLists(html);
-                
-                // Paragraphs
-                html = this.parseParagraphs(html);
-                
-                return html;
-            },
-            
-            parseTables: function(html) {
-                const lines = html.split('\n');
-                const result = [];
-                let inTable = false;
-                let tableRows = [];
-                
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    
-                    // Check if line is a table row
-                    if (line.startsWith('|') && line.endsWith('|')) {
-                        if (!inTable) {
-                            inTable = true;
-                            tableRows = [];
-                        }
-                        tableRows.push(line);
-                    } else {
-                        if (inTable) {
-                            // End of table, process it
-                            result.push(this.buildTable(tableRows));
-                            inTable = false;
-                            tableRows = [];
-                        }
-                        result.push(lines[i]);
-                    }
-                }
-                
-                // Handle table at end of content
-                if (inTable) {
-                    result.push(this.buildTable(tableRows));
-                }
-                
-                return result.join('\n');
-            },
-            
-            buildTable: function(rows) {
-                if (rows.length < 2) return rows.join('\n');
-                
-                let html = '<table>';
-                
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    // Skip separator row
-                    if (row.match(/^\|[\s\-:|]+\|$/)) continue;
-                    
-                    const cells = row.split('|').filter(c => c.trim() !== '');
-                    const isHeader = i === 0;
-                    const tag = isHeader ? 'th' : 'td';
-                    
-                    html += '<tr>';
-                    for (const cell of cells) {
-                        html += `<${tag}>${cell.trim()}</${tag}>`;
-                    }
-                    html += '</tr>';
-                }
-                
-                html += '</table>';
-                return html;
-            },
-            
-            parseLists: function(html) {
-                const lines = html.split('\n');
-                const result = [];
-                let inUl = false;
-                let inOl = false;
-                
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
-                    const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
-                    
-                    if (ulMatch) {
-                        if (!inUl) {
-                            if (inOl) { result.push('</ol>'); inOl = false; }
-                            result.push('<ul>');
-                            inUl = true;
-                        }
-                        result.push(`<li>${ulMatch[2]}</li>`);
-                    } else if (olMatch) {
-                        if (!inOl) {
-                            if (inUl) { result.push('</ul>'); inUl = false; }
-                            result.push('<ol>');
-                            inOl = true;
-                        }
-                        result.push(`<li>${olMatch[2]}</li>`);
-                    } else {
-                        if (inUl) { result.push('</ul>'); inUl = false; }
-                        if (inOl) { result.push('</ol>'); inOl = false; }
-                        result.push(line);
-                    }
-                }
-                
-                if (inUl) result.push('</ul>');
-                if (inOl) result.push('</ol>');
-                
-                return result.join('\n');
-            },
-            
-            parseParagraphs: function(html) {
-                // Split by double newlines
-                const blocks = html.split(/\n\n+/);
-                const result = blocks.map(block => {
-                    block = block.trim();
-                    if (!block) return '';
-                    // Don't wrap if already has block element
-                    if (block.match(/^<(h[1-6]|ul|ol|li|table|tr|td|th|blockquote|pre|hr)/)) {
-                        return block;
-                    }
-                    // Replace single newlines with <br>
-                    block = block.replace(/\n/g, '<br>');
-                    return `<p>${block}</p>`;
-                });
-                return result.join('\n');
+                return ''; // Use external default escaping
             }
-        };
+        });
 
         const mdInput = document.getElementById('mdInput');
         const preview = document.getElementById('preview');
@@ -517,8 +315,8 @@
 
         // Update preview when input changes
         function updatePreview() {
-            const md = mdInput.value;
-            preview.innerHTML = simpleMarkdown.parse(md);
+            const markdownText = mdInput.value;
+            preview.innerHTML = md.render(markdownText);
         }
 
         mdInput.addEventListener('input', updatePreview);
@@ -570,6 +368,7 @@ This is a simple Markdown viewer that helps you convert Markdown to PDF.
 
 - **Live Preview**: See your formatted text as you type
 - **Multiple View Modes**: Switch between different layouts
+- **Syntax Highlighting**: Code blocks with automatic syntax highlighting
 - **Print Ready**: Use "Only Preview" mode for clean PDF exports
 
 ## How to Use
@@ -577,6 +376,17 @@ This is a simple Markdown viewer that helps you convert Markdown to PDF.
 1. Enter your Markdown in the left panel
 2. Press \`Ctrl+M\` to switch between view modes
 3. In "Only Preview" mode, use your browser's Print function (Ctrl+P) to save as PDF
+
+## Code Example
+
+\`\`\`javascript
+function greet(name) {
+    console.log(\`Hello, \${name}!\`);
+    return true;
+}
+
+greet('World');
+\`\`\`
 
 ## View Modes
 
