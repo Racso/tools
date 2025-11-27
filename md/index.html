@@ -284,6 +284,20 @@
     </div>
 
     <script>
+        // Create a dynamic style element for paged media CSS
+        var cssPagedMedia = (function() {
+            var style = document.createElement('style');
+            document.head.appendChild(style);
+            return function(css) {
+                style.innerHTML = css;
+            };
+        })();
+
+        // Add a convenience method to set the @page size
+        cssPagedMedia.size = function(sizeString) {
+            cssPagedMedia('@page { margin: 0; size: ' + sizeString + ' };');
+        };
+
         // Initialize markdown-it with highlight.js for code highlighting
         const md = window.markdownit({
             html: false,        // Disable HTML tags in source for security
@@ -304,6 +318,24 @@
         const container = document.getElementById('container');
         const modeBtn = document.getElementById('modeBtn');
 
+                // Reusable paged-media size updater. Call after rendering preview or on-demand.
+                function updatePagedMediaSize() {
+                    if (!container) return;
+                    // Get width and height in pixels, then convert to inches (1in = 96px)
+                    var rect = container.getBoundingClientRect();
+                    var widthInInches = rect.width / 96;
+
+                    // To replicate $(document).height()+10: Get document height (with a 10px buffer)
+                    var docHeight = Math.max(
+                        document.body.scrollHeight, document.documentElement.scrollHeight,
+                        document.body.offsetHeight, document.documentElement.offsetHeight,
+                        document.body.clientHeight, document.documentElement.clientHeight
+                    ) + 10;
+                    var heightInInches = docHeight / 96;
+
+                    cssPagedMedia.size(widthInInches + 'in ' + heightInInches + 'in');
+                }
+
         const modes = ['side-by-side', 'top-down', 'only-md', 'only-preview'];
         const modeLabels = {
             'side-by-side': 'Side by Side',
@@ -317,6 +349,8 @@
         function updatePreview() {
             const markdownText = mdInput.value;
             preview.innerHTML = md.render(markdownText);
+            // Recalculate paged-media size so printing/export matches current content
+            updatePagedMediaSize();
         }
 
         mdInput.addEventListener('input', updatePreview);
