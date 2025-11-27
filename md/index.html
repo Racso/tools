@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            background: #f5f5f5;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toolbar h1 {
+            font-size: 1.2rem;
+            margin-right: auto;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .mode-btn:hover {
+            background: #0056b3;
+        }
+
+        .shortcut {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Side by side (default) */
+        .container.side-by-side {
+            flex-direction: row;
+        }
+
+        .container.side-by-side .editor,
+        .container.side-by-side .preview {
+            width: 50%;
+            height: 100%;
+        }
+
+        /* Top/Down */
+        .container.top-down {
+            flex-direction: column;
+        }
+
+        .container.top-down .editor,
+        .container.top-down .preview {
+            width: 100%;
+            height: 50%;
+        }
+
+        /* Only MD input */
+        .container.only-md .editor {
+            width: 100%;
+            height: 100%;
+        }
+
+        .container.only-md .preview {
+            display: none;
+        }
+
+        /* Only formatted text */
+        .container.only-preview .editor {
+            display: none;
+        }
+
+        .container.only-preview .preview {
+            width: 100%;
+            height: 100%;
+        }
+
+        .editor {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ddd;
+        }
+
+        .container.top-down .editor {
+            border-right: none;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .editor textarea {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            resize: none;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+        }
+
+        .preview {
+            overflow: auto;
+            padding: 15px;
+            background: white;
+        }
+
+        .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .preview h1:first-child, .preview h2:first-child, .preview h3:first-child {
+            margin-top: 0;
+        }
+
+        .preview p {
+            margin-bottom: 1em;
+            line-height: 1.6;
+        }
+
+        .preview ul, .preview ol {
+            margin-bottom: 1em;
+            padding-left: 2em;
+        }
+
+        .preview li {
+            margin-bottom: 0.3em;
+        }
+
+        .preview code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .preview pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 1em;
+        }
+
+        .preview pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .preview blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
+            margin: 1em 0;
+            color: #666;
+        }
+
+        .preview table {
+            border-collapse: collapse;
+            margin-bottom: 1em;
+            width: 100%;
+        }
+
+        .preview th, .preview td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .preview th {
+            background: #f5f5f5;
+        }
+
+        .preview a {
+            color: #007bff;
+        }
+
+        .preview img {
+            max-width: 100%;
+        }
+
+        .preview hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 1.5em 0;
+        }
+
+        /* Print styles - hide everything except preview in only-preview mode */
+        @media print {
+            .toolbar {
+                display: none !important;
+            }
+
+            .container.only-preview .editor {
+                display: none !important;
+            }
+
+            .container.only-preview .preview {
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+
+            body.print-mode .toolbar {
+                display: none !important;
+            }
+
+            body.print-mode .container {
+                display: block !important;
+            }
+
+            body.print-mode .editor {
+                display: none !important;
+            }
+
+            body.print-mode .preview {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+        }
+
+        /* Full page mode - hide toolbar */
+        body.fullpage-mode .toolbar {
+            display: none;
+        }
+
+        body.fullpage-mode .container {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>MD Viewer</h1>
+        <button class="mode-btn" id="modeBtn" title="Switch view mode">
+            Side by Side <span class="shortcut">Ctrl+M</span>
+        </button>
+    </div>
+    <div class="container side-by-side" id="container">
+        <div class="editor">
+            <textarea id="mdInput" placeholder="Enter your Markdown here..."></textarea>
+        </div>
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <script>
+        // Simple Markdown parser
+        const simpleMarkdown = {
+            parse: function(text) {
+                if (!text) return '';
+                
+                let html = text;
+                
+                // Escape HTML
+                html = html.replace(/&/g, '&amp;')
+                           .replace(/</g, '&lt;')
+                           .replace(/>/g, '&gt;');
+                
+                // Code blocks (must be before other processing)
+                html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+                
+                // Inline code
+                html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                // Headers
+                html = html.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>');
+                html = html.replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>');
+                html = html.replace(/^####\s+(.*)$/gm, '<h4>$1</h4>');
+                html = html.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+                html = html.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+                html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+                
+                // Bold and italic
+                html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+                html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                html = html.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
+                html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+                html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+                
+                // Strikethrough
+                html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+                
+                // Horizontal rule
+                html = html.replace(/^---+$/gm, '<hr>');
+                html = html.replace(/^\*\*\*+$/gm, '<hr>');
+                
+                // Blockquotes
+                html = html.replace(/^>\s+(.*)$/gm, '<blockquote>$1</blockquote>');
+                // Merge consecutive blockquotes
+                html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+                
+                // Links
+                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+                
+                // Images
+                html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+                
+                // Tables
+                html = this.parseTables(html);
+                
+                // Lists
+                html = this.parseLists(html);
+                
+                // Paragraphs
+                html = this.parseParagraphs(html);
+                
+                return html;
+            },
+            
+            parseTables: function(html) {
+                const lines = html.split('\n');
+                const result = [];
+                let inTable = false;
+                let tableRows = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // Check if line is a table row
+                    if (line.startsWith('|') && line.endsWith('|')) {
+                        if (!inTable) {
+                            inTable = true;
+                            tableRows = [];
+                        }
+                        tableRows.push(line);
+                    } else {
+                        if (inTable) {
+                            // End of table, process it
+                            result.push(this.buildTable(tableRows));
+                            inTable = false;
+                            tableRows = [];
+                        }
+                        result.push(lines[i]);
+                    }
+                }
+                
+                // Handle table at end of content
+                if (inTable) {
+                    result.push(this.buildTable(tableRows));
+                }
+                
+                return result.join('\n');
+            },
+            
+            buildTable: function(rows) {
+                if (rows.length < 2) return rows.join('\n');
+                
+                let html = '<table>';
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    // Skip separator row
+                    if (row.match(/^\|[\s\-:|]+\|$/)) continue;
+                    
+                    const cells = row.split('|').filter(c => c.trim() !== '');
+                    const isHeader = i === 0;
+                    const tag = isHeader ? 'th' : 'td';
+                    
+                    html += '<tr>';
+                    for (const cell of cells) {
+                        html += `<${tag}>${cell.trim()}</${tag}>`;
+                    }
+                    html += '</tr>';
+                }
+                
+                html += '</table>';
+                return html;
+            },
+            
+            parseLists: function(html) {
+                const lines = html.split('\n');
+                const result = [];
+                let inUl = false;
+                let inOl = false;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+                    const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+                    
+                    if (ulMatch) {
+                        if (!inUl) {
+                            if (inOl) { result.push('</ol>'); inOl = false; }
+                            result.push('<ul>');
+                            inUl = true;
+                        }
+                        result.push(`<li>${ulMatch[2]}</li>`);
+                    } else if (olMatch) {
+                        if (!inOl) {
+                            if (inUl) { result.push('</ul>'); inUl = false; }
+                            result.push('<ol>');
+                            inOl = true;
+                        }
+                        result.push(`<li>${olMatch[2]}</li>`);
+                    } else {
+                        if (inUl) { result.push('</ul>'); inUl = false; }
+                        if (inOl) { result.push('</ol>'); inOl = false; }
+                        result.push(line);
+                    }
+                }
+                
+                if (inUl) result.push('</ul>');
+                if (inOl) result.push('</ol>');
+                
+                return result.join('\n');
+            },
+            
+            parseParagraphs: function(html) {
+                // Split by double newlines
+                const blocks = html.split(/\n\n+/);
+                const result = blocks.map(block => {
+                    block = block.trim();
+                    if (!block) return '';
+                    // Don't wrap if already has block element
+                    if (block.match(/^<(h[1-6]|ul|ol|li|table|tr|td|th|blockquote|pre|hr)/)) {
+                        return block;
+                    }
+                    // Replace single newlines with <br>
+                    block = block.replace(/\n/g, '<br>');
+                    return `<p>${block}</p>`;
+                });
+                return result.join('\n');
+            }
+        };
+
+        const mdInput = document.getElementById('mdInput');
+        const preview = document.getElementById('preview');
+        const container = document.getElementById('container');
+        const modeBtn = document.getElementById('modeBtn');
+
+        const modes = ['side-by-side', 'top-down', 'only-md', 'only-preview'];
+        const modeLabels = {
+            'side-by-side': 'Side by Side',
+            'top-down': 'Top / Down',
+            'only-md': 'Only MD',
+            'only-preview': 'Only Preview'
+        };
+        let currentModeIndex = 0;
+
+        // Update preview when input changes
+        function updatePreview() {
+            const md = mdInput.value;
+            preview.innerHTML = simpleMarkdown.parse(md);
+        }
+
+        mdInput.addEventListener('input', updatePreview);
+
+        // Switch mode
+        function switchMode() {
+            currentModeIndex = (currentModeIndex + 1) % modes.length;
+            const newMode = modes[currentModeIndex];
+            
+            // Remove all mode classes
+            container.classList.remove(...modes);
+            // Add new mode class
+            container.classList.add(newMode);
+            
+            // Update button text
+            modeBtn.innerHTML = `${modeLabels[newMode]} <span class="shortcut">Ctrl+M</span>`;
+            
+            // Toggle fullpage mode for only-preview
+            if (newMode === 'only-preview') {
+                document.body.classList.add('fullpage-mode');
+            } else {
+                document.body.classList.remove('fullpage-mode');
+            }
+        }
+
+        modeBtn.addEventListener('click', switchMode);
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+M or Cmd+M to switch modes
+            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+                e.preventDefault();
+                switchMode();
+            }
+            
+            // Escape to exit fullpage mode
+            if (e.key === 'Escape' && document.body.classList.contains('fullpage-mode')) {
+                e.preventDefault();
+                switchMode();
+            }
+        });
+
+        // Initial sample content
+        mdInput.value = `# Welcome to MD Viewer
+
+This is a simple Markdown viewer that helps you convert Markdown to PDF.
+
+## Features
+
+- **Live Preview**: See your formatted text as you type
+- **Multiple View Modes**: Switch between different layouts
+- **Print Ready**: Use "Only Preview" mode for clean PDF exports
+
+## How to Use
+
+1. Enter your Markdown in the left panel
+2. Press \`Ctrl+M\` to switch between view modes
+3. In "Only Preview" mode, use your browser's Print function (Ctrl+P) to save as PDF
+
+## View Modes
+
+| Mode | Description |
+|------|-------------|
+| Side by Side | Editor and preview side by side |
+| Top / Down | Editor on top, preview below |
+| Only MD | Just the Markdown editor |
+| Only Preview | Just the formatted output (for printing) |
+
+> **Tip**: Press \`Escape\` in "Only Preview" mode to quickly switch to the next mode.
+
+---
+
+*Start typing to see your Markdown rendered!*`;
+
+        // Initial render
+        updatePreview();
+    </script>
+</body>
+</html>
