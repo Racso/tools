@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tools — racso.co</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #111;
+        }
+
+        header p {
+            margin-top: 0.4rem;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #007bff;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #007bff;
+            margin-bottom: 0.3rem;
+        }
+
+        .card p {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        footer {
+            margin-top: 3rem;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+
+        footer a { color: #aaa; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Tools</h1>
+        <p>Quick utilities by <a href="https://racso.co" style="color:#007bff;text-decoration:none;">racso</a></p>
+    </header>
+
+    <div class="grid">
+        <a class="card" href="md/">
+            <h2>MD Viewer</h2>
+            <p>Render and preview Markdown with syntax highlighting. Print-ready PDF export.</p>
+        </a>
+    </div>
+
+    <footer><a href="https://github.com/Racso/tools">github.com/Racso/tools</a></footer>
+</body>
+</html>
